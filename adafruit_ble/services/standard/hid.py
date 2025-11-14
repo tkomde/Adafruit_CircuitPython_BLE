@@ -285,8 +285,19 @@ class Device:
             self._report_id_order.append(report_id)
         self._report_outs[report_id] = report_out
 
-    def _first_report_id(self):
-        return self._report_id_order[0] if self._report_id_order else None
+    def _first_report_in_id(self):
+        """Return the first report_id that has an input (ReportIn)."""
+        for rid in self._report_id_order:
+            if rid in self._report_ins:
+                return rid
+        return None
+
+    def _first_report_out_id(self):
+        """Return the first report_id that has an output (ReportOut)."""
+        for rid in self._report_id_order:
+            if rid in self._report_outs:
+                return rid
+        return None
 
     def send_report(self, report: Dict, report_id: int | None = None) -> None:
         """Send a report via the ReportIn class.
@@ -295,7 +306,7 @@ class Device:
         Raises RuntimeError if no matching ReportIn exists.
         """
         if report_id is None:
-            report_id = self._first_report_id()
+            report_id = self._first_report_in_id()
         if report_id is None or report_id not in self._report_ins:
             raise RuntimeError(f"No input report available for report_id {report_id}")
         self._report_ins[report_id].send_report(report)
@@ -305,7 +316,7 @@ class Device:
         If report_id is None, uses the first-added report_id for this device.
         """
         if report_id is None:
-            report_id = self._first_report_id()
+            report_id = self._first_report_out_id()
         if report_id is None or report_id not in self._report_outs:
             return None
         return self._report_outs[report_id].report
