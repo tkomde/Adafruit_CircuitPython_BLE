@@ -260,8 +260,8 @@ class Device:
     def __init__(self, usage_page, usage):
         self._usage_page = usage_page
         self._usage = usage
-        # Maintain insertion order of report_ids
-        self._report_id_order = []  # list of report_id in insertion order
+        self._first_report_in_id = None
+        self._first_report_out_id = None
         self._report_ins = {}  # report_id -> ReportIn
         self._report_outs = {}  # report_id -> ReportOut
 
@@ -275,50 +275,30 @@ class Device:
 
     def add_report_in(self, report_id: int, report_in: ReportIn) -> None:
         """Register a ReportIn instance for a report_id."""
-        if report_id not in self._report_id_order:
-            self._report_id_order.append(report_id)
+        if self._first_report_in_id is None:
+            self._first_report_in_id = report_id
         self._report_ins[report_id] = report_in
 
     def add_report_out(self, report_id: int, report_out: ReportOut) -> None:
         """Register a ReportOut instance for a report_id."""
-        if report_id not in self._report_id_order:
-            self._report_id_order.append(report_id)
+        if self._first_report_out_id is None:
+            self._first_report_out_id = report_id
         self._report_outs[report_id] = report_out
 
-    def _first_report_in_id(self):
-        """Return the first report_id that has an input (ReportIn)."""
-        for rid in self._report_id_order:
-            if rid in self._report_ins:
-                return rid
-        return None
-
-    def _first_report_out_id(self):
-        """Return the first report_id that has an output (ReportOut)."""
-        for rid in self._report_id_order:
-            if rid in self._report_outs:
-                return rid
-        return None
-
     def send_report(self, report: Dict, report_id: int | None = None) -> None:
-        """Send a report via the ReportIn class.
-
-        If report_id is None, uses the first-added report_id for this device.
-        Raises RuntimeError if no matching ReportIn exists.
-        """
+        """Send a report via the ReportIn class."""
+        if report_id is None and self._first_report_in_id is not None:
+            report_id = self._first_report_in_id
         if report_id is None:
-            report_id = self._first_report_in_id()
-        if report_id is None or report_id not in self._report_ins:
-            raise RuntimeError(f"No input report available for report_id {report_id}")
+            raise RuntimeError("No input report available")
         self._report_ins[report_id].send_report(report)
 
     def get_last_received_report(self, report_id: int | None = None):
-        """Return the last OUT report received.
-        If report_id is None, uses the first-added report_id for this device.
-        """
+        """Return the last OUT report received."""
+        if report_id is None and self._first_report_out_id is not None:
+            report_id = self._first_report_out_id
         if report_id is None:
-            report_id = self._first_report_out_id()
-        if report_id is None or report_id not in self._report_outs:
-            return None
+            raise RuntimeError("No output report available")
         return self._report_outs[report_id].report
 
 
